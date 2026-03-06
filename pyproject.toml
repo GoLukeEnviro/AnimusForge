@@ -19,6 +19,7 @@ dependencies = [
     "pyyaml>=6.0.0",
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
+    "docker>=7.0.0",
 ]
 
 [project.optional-dependencies]
