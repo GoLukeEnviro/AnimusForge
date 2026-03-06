@@ -1,9 +1,9 @@
-"""AnimusForge Resilience Layer - LLM Gateway and Circuit Breaker Patterns."""
+"""AnimusForge Resilience Layer - LLM Gateway, Circuit Breaker, Bulkhead, and Retry Patterns."""
 
 from animus_resilience.llm_gateway import (
     CircuitBreaker,
     CircuitState,
-    RetryConfig,
+    RetryConfig as GatewayRetryConfig,
     LatencyTracker,
     CostTracker,
     LLMResponse,
@@ -17,10 +17,23 @@ from animus_resilience.llm_gateway import (
     create_gateway,
 )
 
+from animus_resilience.retry import (
+    BackoffStrategy,
+    RetryConfig,
+    RetryResult,
+    RetryMetrics,
+    Retrier,
+    retry,
+    RetryRegistry,
+    get_global_registry,
+    reset_global_registry,
+)
+
 __all__ = [
+    # LLM Gateway
     "CircuitBreaker",
     "CircuitState",
-    "RetryConfig",
+    "GatewayRetryConfig",
     "LatencyTracker",
     "CostTracker",
     "LLMResponse",
@@ -32,4 +45,14 @@ __all__ = [
     "GatewayConfig",
     "LLMGateway",
     "create_gateway",
+    # Retry
+    "BackoffStrategy",
+    "RetryConfig",
+    "RetryResult",
+    "RetryMetrics",
+    "Retrier",
+    "retry",
+    "RetryRegistry",
+    "get_global_registry",
+    "reset_global_registry",
 ]
