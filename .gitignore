@@ -34,3 +34,4 @@ logs/
 # Database
 *.db
 *.sqlite3
+.a0proj/memory/
