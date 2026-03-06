@@ -1,108 +1,35 @@
-# Coverage Configuration for AnimusForge
-# Documentation: https://coverage.readthedocs.io/
-
 [run]
-# Source directory to measure
-source = src/
-
-# Enable branch coverage
+source = src/animus_stage
+    src/animus_conscience
 branch = True
-
-# Parallel execution support
 parallel = True
-
-# Data file location
 data_file = .coverage
-
-# Omit from coverage
 omit =
     tests/**
     */__pycache__/**
     */site-packages/**
-    */dist-packages/**
-    */migrations/**
-    */.venv/**
-    */venv/**
-    setup.py
-    conftest.py
-
-# Include patterns (if source is not enough)
-include =
-    src/**/*.py
 
 [report]
-# Fail if coverage below threshold
 fail_under = 85
-
-# Precision of coverage percentage
 precision = 2
-
-# Show missing lines in report
 show_missing = True
-
-# Skip covered files in report
 skip_covered = False
-
-# Skip empty files
 skip_empty = True
 
-# Exclude lines from coverage
 exclude_lines =
-    # Standard pragma
     pragma: no cover
-    
-    # Debug-only code
     def __repr__
     def __str__
-    
-    # Defensive programming
     raise AssertionError
     raise NotImplementedError
-    
-    # Type checking blocks
     if TYPE_CHECKING:
     if typing.TYPE_CHECKING:
-    
-    # Abstract methods
     @abstractmethod
     @abc.abstractmethod
-    
-    # Protocol definitions
-    class .*\(Protocol\):
-    class .*\(typing.Protocol\):
-    
-    # Main guard
     if __name__ == .__main__.:
-    
-    # Test markers
-    @pytest.mark.skip
-    @skip
     pass
     ...
 
-# Partial branch exclusion
-partial_branches =
-    # Allow partial branches for common patterns
-    if .*:
-    elif .*:
-    else:
-
 [html]
-# HTML report directory
 directory = htmlcov
-
-# Report title
 title = AnimusForge Coverage Report
-
-[xml]
-# XML report file
-output = coverage.xml
-
-[json]
-# JSON report file
-output = coverage.json
-show_contexts = True
-
-[combine]
-# Combine parallel coverage data
-parallel = True

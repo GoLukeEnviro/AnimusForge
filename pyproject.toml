@@ -43,3 +43,9 @@ target-version = "py312"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/animus_stage", "src/animus_core", "src/animus_api", "src/animus_tools", "src/animus_resilience"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/**"]
