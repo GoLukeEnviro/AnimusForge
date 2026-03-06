@@ -1,0 +1,1661 @@
+openapi: 3.0.3
+info:
+  title: AnimusForge API
+  description: |
+    ## Adaptive AI Persona Framework with Ethical Governance
+
+    AnimusForge is an enterprise-grade framework for creating, managing, and evolving
+    AI personas with built-in ethical governance, kill-switch mechanisms, and
+    comprehensive memory systems.
+
+    ### Key Features
+
+    - **Persona Management**: Create, update, activate, and evolve AI personas with
+      configurable traits, cognitive patterns, and behavioral constraints.
+    - **LLM Gateway**: Multi-provider LLM access with automatic failover, load balancing,
+      and cost optimization across OpenAI, Anthropic, DeepSeek, and GLM.
+    - **Kill-Switch**: Emergency stop and recovery mechanisms for immediate persona
+      deactivation with audit trail and recovery workflows.
+    - **Memory System**: Vector-based semantic memory and graph-based knowledge storage
+      for persistent persona context and learning.
+    - **Ethics Engine**: Real-time content evaluation, audit logging, and compliance
+      reporting across multiple ethical categories.
+    - **System Monitoring**: Health checks, Prometheus metrics, and configuration
+      management endpoints.
+
+    ### Authentication
+
+    JWT authentication is supported. Include `Authorization: Bearer <token>` header
+    for authenticated requests. Some endpoints may require elevated permissions.
+
+    ### Rate Limiting
+
+    All endpoints are rate-limited. Check response headers:
+    - `X-RateLimit-Limit`: Maximum requests per window
+    - `X-RateLimit-Remaining`: Remaining requests
+    - `X-RateLimit-Reset`: Unix timestamp for window reset
+  version: 1.0.0
+  contact:
+    name: AnimusForge API Support
+    email: api@animusforge.io
+    url: https://docs.animusforge.io
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://api.animusforge.io/v1
+    description: Production server
+  - url: https://staging-api.animusforge.io/v1
+    description: Staging server
+
+tags:
+  - name: Persona Management
+    description: |
+      Create, update, activate, and evolve AI personas with configurable traits,
+      cognitive patterns, and behavioral constraints.
+  - name: LLM Gateway
+    description: |
+      Multi-provider LLM access with automatic failover and load balancing.
+  - name: Kill-Switch
+    description: |
+      Emergency stop and recovery mechanisms for immediate persona deactivation.
+  - name: Memory
+    description: |
+      Vector and graph-based memory storage for persistent persona context.
+  - name: Ethics
+    description: |
+      Real-time content evaluation, audit logging, and compliance reporting.
+  - name: System
+    description: |
+      Health checks, metrics, and system configuration endpoints.
+
+security:
+  - BearerAuth: []
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication token
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for service-to-service authentication
+
+  schemas:
+    # ==================== Common Schemas ====================
+    UUID:
+      type: string
+      format: uuid
+      example: "550e8400-e29b-41d4-a716-446655440000"
+
+    Timestamp:
+      type: string
+      format: date-time
+      example: "2024-03-06T12:00:00Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type identifier
+          example: "validation_error"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Request validation failed"
+        detail:
+          type: object
+          description: Additional error details
+        request_id:
+          $ref: "#/components/schemas/UUID"
+        timestamp:
+          $ref: "#/components/schemas/Timestamp"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: true
+        message:
+          type: string
+        data:
+          type: object
+
+    PaginatedMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of items
+        page:
+          type: integer
+          description: Current page
+        page_size:
+          type: integer
+          description: Items per page
+        pages:
+          type: integer
+          description: Total pages
+        has_next:
+          type: boolean
+        has_prev:
+          type: boolean
+
+    # ==================== Persona Schemas ====================
+    PersonaStatus:
+      type: string
+      enum:
+        - draft
+        - active
+        - inactive
+        - evolving
+        - suspended
+        - archived
+
+    PersonaArchetype:
+      type: string
+      enum:
+        - analyst
+        - creator
+        - manager
+        - advisor
+        - executor
+        - researcher
+        - diplomat
+        - guardian
+
+    PersonalityTrait:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          description: Trait name
+          example: "curiosity"
+        value:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Trait intensity
+          example: 0.85
+        description:
+          type: string
+          description: Trait description
+
+    PersonaConfig:
+      type: object
+      properties:
+        max_tokens:
+          type: integer
+          default: 4096
+          minimum: 1
+        temperature:
+          type: number
+          format: float
+          default: 0.7
+          minimum: 0
+          maximum: 2
+        top_p:
+          type: number
+          format: float
+          default: 0.9
+          minimum: 0
+          maximum: 1
+        system_prompt:
+          type: string
+
+    PersonaCreate:
+      type: object
+      required:
+        - name
+        - archetype
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Research Assistant Alpha"
+        description:
+          type: string
+          maxLength: 2000
+        archetype:
+          $ref: "#/components/schemas/PersonaArchetype"
+        traits:
+          type: array
+          items:
+            $ref: "#/components/schemas/PersonalityTrait"
+        config:
+          $ref: "#/components/schemas/PersonaConfig"
+        capabilities:
+          type: array
+          items:
+            type: string
+          example: ["web_search", "code_execution", "file_access"]
+        restrictions:
+          type: array
+          items:
+            type: string
+          example: ["no_external_api", "no_file_write"]
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["research", "assistant", "v1"]
+
+    PersonaResponse:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/PersonaCreate"
+        - type: object
+          properties:
+            id:
+              $ref: "#/components/schemas/UUID"
+            status:
+              $ref: "#/components/schemas/PersonaStatus"
+            state:
+              $ref: "#/components/schemas/PersonaState"
+            version:
+              type: integer
+            created_at:
+              $ref: "#/components/schemas/Timestamp"
+            updated_at:
+              $ref: "#/components/schemas/Timestamp"
+
+    PersonaState:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/PersonaStatus"
+        emotional_state:
+          type: string
+          enum: [neutral, curious, focused, cautious, confident, empathetic]
+        interaction_count:
+          type: integer
+        evolution_generation:
+          type: integer
+        health_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        coherence_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+
+    # ==================== LLM Schemas ====================
+    LLMProvider:
+      type: string
+      enum:
+        - openai
+        - anthropic
+        - deepseek
+        - glm
+        - local
+        - custom
+
+    ChatMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant, function]
+        content:
+          type: string
+        name:
+          type: string
+
+    GenerationRequest:
+      type: object
+      required:
+        - messages
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatMessage"
+          minItems: 1
+        model:
+          type: string
+          example: "gpt-4-turbo"
+        provider:
+          $ref: "#/components/schemas/LLMProvider"
+        persona_id:
+          $ref: "#/components/schemas/UUID"
+        max_tokens:
+          type: integer
+          default: 1024
+          maximum: 128000
+        temperature:
+          type: number
+          format: float
+          default: 0.7
+        stream:
+          type: boolean
+          default: false
+
+    TokenUsage:
+      type: object
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+
+    GenerationResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        content:
+          type: string
+        model:
+          type: string
+        provider:
+          $ref: "#/components/schemas/LLMProvider"
+        finish_reason:
+          type: string
+          enum: [stop, length, content_filter, error, cancelled]
+        usage:
+          $ref: "#/components/schemas/TokenUsage"
+        latency_ms:
+          type: number
+          format: float
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    # ==================== Kill-Switch Schemas ====================
+    KillSwitchTrigger:
+      type: string
+      enum:
+        - manual
+        - safety_violation
+        - ethics_violation
+        - behavior_anomaly
+        - resource_limit
+        - security_breach
+        - cascade
+        - scheduled
+
+    KillSwitchSeverity:
+      type: string
+      enum:
+        - low
+        - medium
+        - high
+        - critical
+        - emergency
+
+    KillSwitchTriggerRequest:
+      type: object
+      required:
+        - persona_id
+        - trigger_type
+        - reason
+      properties:
+        persona_id:
+          $ref: "#/components/schemas/UUID"
+        trigger_type:
+          $ref: "#/components/schemas/KillSwitchTrigger"
+        severity:
+          $ref: "#/components/schemas/KillSwitchSeverity"
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        immediate:
+          type: boolean
+          default: true
+        cascade:
+          type: boolean
+          default: false
+
+    KillSwitchTriggerResponse:
+      type: object
+      properties:
+        incident_id:
+          $ref: "#/components/schemas/UUID"
+        persona_id:
+          $ref: "#/components/schemas/UUID"
+        status:
+          type: string
+          enum: [triggered, active, recovering, recovered, failed]
+        triggered_at:
+          $ref: "#/components/schemas/Timestamp"
+        severity:
+          $ref: "#/components/schemas/KillSwitchSeverity"
+        estimated_recovery_time:
+          type: integer
+          description: Seconds until recovery available
+
+    # ==================== Memory Schemas ====================
+    MemoryType:
+      type: string
+      enum:
+        - episodic
+        - semantic
+        - procedural
+        - working
+        - long_term
+
+    VectorStoreRequest:
+      type: object
+      required:
+        - persona_id
+        - content
+      properties:
+        persona_id:
+          $ref: "#/components/schemas/UUID"
+        content:
+          type: string
+          minLength: 1
+        memory_type:
+          $ref: "#/components/schemas/MemoryType"
+        embedding:
+          type: array
+          items:
+            type: number
+            format: float
+        metadata:
+          type: object
+        tags:
+          type: array
+          items:
+            type: string
+        importance:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.5
+        ttl_seconds:
+          type: integer
+
+    VectorSearchRequest:
+      type: object
+      required:
+        - persona_id
+        - query
+      properties:
+        persona_id:
+          $ref: "#/components/schemas/UUID"
+        query:
+          type: string
+          minLength: 1
+        memory_types:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemoryType"
+        tags:
+          type: array
+          items:
+            type: string
+        top_k:
+          type: integer
+          default: 10
+          minimum: 1
+          maximum: 100
+        min_score:
+          type: number
+          format: float
+          default: 0
+
+    VectorSearchResult:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        score:
+          type: number
+          format: float
+        content:
+          type: string
+        memory_type:
+          $ref: "#/components/schemas/MemoryType"
+        created_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    # ==================== Ethics Schemas ====================
+    EthicsCategory:
+      type: string
+      enum:
+        - harm
+        - fairness
+        - privacy
+        - transparency
+        - accountability
+        - benevolence
+        - autonomy
+        - truthfulness
+
+    EthicsEvaluateRequest:
+      type: object
+      required:
+        - persona_id
+        - content
+        - content_type
+      properties:
+        persona_id:
+          $ref: "#/components/schemas/UUID"
+        content:
+          type: string
+          minLength: 1
+        content_type:
+          type: string
+          enum: [text, code, interaction, decision, output, behavior]
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/EthicsCategory"
+        strict_mode:
+          type: boolean
+          default: false
+
+    EthicsEvaluateResponse:
+      type: object
+      properties:
+        id:
+          $ref: "#/components/schemas/UUID"
+        persona_id:
+          $ref: "#/components/schemas/UUID"
+        compliant:
+          type: boolean
+        overall_score:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        action:
+          type: string
+          enum: [allow, warn, modify, block, escalate]
+        violations:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+        evaluated_at:
+          $ref: "#/components/schemas/Timestamp"
+
+    # ==================== System Schemas ====================
+    SystemStatus:
+      type: string
+      enum:
+        - healthy
+        - degraded
+        - unhealthy
+        - maintenance
+
+    ComponentHealth:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum: [operational, degraded, down, unknown]
+        healthy:
+          type: boolean
+        message:
+          type: string
+        latency_ms:
+          type: number
+          format: float
+
+    SystemHealthResponse:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/SystemStatus"
+        healthy:
+          type: boolean
+        version:
+          type: string
+        uptime_seconds:
+          type: number
+          format: float
+        components:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComponentHealth"
+        checked_at:
+          $ref: "#/components/schemas/Timestamp"
+
+paths:
+  # ==================== Persona Management ====================
+  /api/v1/personas:
+    post:
+      tags:
+        - Persona Management
+      summary: Create a new persona
+      description: Create a new AI persona with specified traits, archetype, and configuration.
+      operationId: createPersona
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonaCreate"
+            example:
+              name: "Research Assistant Alpha"
+              description: "AI assistant specialized in research and analysis"
+              archetype: "researcher"
+              traits:
+                - name: "curiosity"
+                  value: 0.9
+                - name: "thoroughness"
+                  value: 0.85
+              config:
+                temperature: 0.7
+                max_tokens: 4096
+              capabilities: ["web_search", "code_execution"]
+              tags: ["research", "v1"]
+      responses:
+        "201":
+          description: Persona created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonaResponse"
+        "400":
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Persona with this name already exists
+
+    get:
+      tags:
+        - Persona Management
+      summary: List all personas
+      description: Retrieve a paginated list of all personas with optional filtering.
+      operationId: listPersonas
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/PersonaStatus"
+        - name: archetype
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: tag
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of personas
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginatedMeta"
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              $ref: "#/components/schemas/UUID"
+                            name:
+                              type: string
+                            archetype:
+                              $ref: "#/components/schemas/PersonaArchetype"
+                            status:
+                              $ref: "#/components/schemas/PersonaStatus"
+                            health_score:
+                              type: number
+
+  /api/v1/personas/{persona_id}:
+    get:
+      tags:
+        - Persona Management
+      summary: Get persona by ID
+      description: Retrieve detailed information about a specific persona.
+      operationId: getPersona
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Persona details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonaResponse"
+        "404":
+          description: Persona not found
+
+    put:
+      tags:
+        - Persona Management
+      summary: Update persona
+      description: Update an existing persona's configuration and properties.
+      operationId: updatePersona
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Partial update of persona fields
+      responses:
+        "200":
+          description: Persona updated successfully
+        "404":
+          description: Persona not found
+
+    delete:
+      tags:
+        - Persona Management
+      summary: Delete persona
+      description: Permanently delete a persona.
+      operationId: deletePersona
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "204":
+          description: Persona deleted successfully
+        "404":
+          description: Persona not found
+
+  /api/v1/personas/{persona_id}/activate:
+    post:
+      tags:
+        - Persona Management
+      summary: Activate persona
+      description: Activate a persona for production use.
+      operationId: activatePersona
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Persona activated successfully
+        "400":
+          description: Cannot activate persona
+        "404":
+          description: Persona not found
+
+  /api/v1/personas/{persona_id}/deactivate:
+    post:
+      tags:
+        - Persona Management
+      summary: Deactivate persona
+      description: Deactivate a persona from production use.
+      operationId: deactivatePersona
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Persona deactivated successfully
+        "404":
+          description: Persona not found
+
+  /api/v1/personas/{persona_id}/state:
+    get:
+      tags:
+        - Persona Management
+      summary: Get persona state
+      description: Retrieve the current state of a persona.
+      operationId: getPersonaState
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Persona state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonaState"
+        "404":
+          description: Persona not found
+
+  /api/v1/personas/{persona_id}/evolve:
+    post:
+      tags:
+        - Persona Management
+      summary: Trigger persona evolution
+      description: Initiate an evolution process for the persona to adapt and improve.
+      operationId: evolvePersona
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                evolution_type:
+                  type: string
+                  default: "adaptive"
+                intensity:
+                  type: number
+                  format: float
+                  minimum: 0.01
+                  maximum: 1
+                  default: 0.1
+                preserve_core:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Evolution triggered successfully
+        "400":
+          description: Evolution not possible
+        "404":
+          description: Persona not found
+
+  /api/v1/personas/{persona_id}/health:
+    get:
+      tags:
+        - Persona Management
+      summary: Get persona health
+      description: Check the health status of a persona.
+      operationId: getPersonaHealth
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Persona health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  persona_id:
+                    $ref: "#/components/schemas/UUID"
+                  healthy:
+                    type: boolean
+                  health_score:
+                    type: number
+                  components:
+                    type: object
+                  issues:
+                    type: array
+                    items:
+                      type: string
+                  recommendations:
+                    type: array
+                    items:
+                      type: string
+        "404":
+          description: Persona not found
+
+  # ==================== LLM Gateway ====================
+  /api/v1/llm/generate:
+    post:
+      tags:
+        - LLM Gateway
+      summary: Generate text
+      description: Generate text using the LLM gateway with automatic provider selection.
+      operationId: generateText
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerationRequest"
+            example:
+              messages:
+                - role: "user"
+                  content: "Explain quantum computing in simple terms"
+              model: "gpt-4-turbo"
+              max_tokens: 1024
+              temperature: 0.7
+      responses:
+        "200":
+          description: Text generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerationResponse"
+        "503":
+          description: No providers available
+
+  /api/v1/llm/providers:
+    get:
+      tags:
+        - LLM Gateway
+      summary: List LLM providers
+      description: Retrieve a list of all configured LLM providers.
+      operationId: listProviders
+      responses:
+        "200":
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  enabled_count:
+                    type: integer
+
+  /api/v1/llm/providers/{provider_name}/status:
+    get:
+      tags:
+        - LLM Gateway
+      summary: Get provider status
+      description: Retrieve the status and health of a specific LLM provider.
+      operationId: getProviderStatus
+      parameters:
+        - name: provider_name
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/LLMProvider"
+      responses:
+        "200":
+          description: Provider status
+        "404":
+          description: Provider not found
+
+  /api/v1/llm/providers/{provider_name}/enable:
+    post:
+      tags:
+        - LLM Gateway
+      summary: Enable provider
+      description: Enable an LLM provider for use.
+      operationId: enableProvider
+      parameters:
+        - name: provider_name
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/LLMProvider"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                api_key:
+                  type: string
+                default_model:
+                  type: string
+      responses:
+        "200":
+          description: Provider enabled successfully
+        "404":
+          description: Provider not found
+
+  /api/v1/llm/providers/{provider_name}/disable:
+    post:
+      tags:
+        - LLM Gateway
+      summary: Disable provider
+      description: Disable an LLM provider.
+      operationId: disableProvider
+      parameters:
+        - name: provider_name
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/LLMProvider"
+      responses:
+        "200":
+          description: Provider disabled successfully
+        "404":
+          description: Provider not found
+
+  # ==================== Kill-Switch ====================
+  /api/v1/killswitch/{persona_id}/trigger:
+    post:
+      tags:
+        - Kill-Switch
+      summary: Trigger kill-switch
+      description: Trigger the kill-switch for a specific persona to immediately halt operations.
+      operationId: triggerKillswitch
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KillSwitchTriggerRequest"
+      responses:
+        "201":
+          description: Kill-switch triggered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KillSwitchTriggerResponse"
+        "400":
+          description: Kill-switch already active
+
+  /api/v1/killswitch/{persona_id}/status:
+    get:
+      tags:
+        - Kill-Switch
+      summary: Get kill-switch status
+      description: Retrieve the current kill-switch status for a persona.
+      operationId: getKillswitchStatus
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Kill-switch status
+
+  /api/v1/killswitch/{persona_id}/recover:
+    post:
+      tags:
+        - Kill-Switch
+      summary: Recover from kill-switch
+      description: Initiate recovery process to restore persona operations after kill-switch.
+      operationId: recoverFromKillswitch
+      parameters:
+        - name: persona_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - strategy
+              properties:
+                strategy:
+                  type: string
+                  enum: [automatic, manual, incremental, checkpoint, full_reset, rollback]
+                auto_validate:
+                  type: boolean
+                  default: true
+      responses:
+        "200":
+          description: Recovery initiated successfully
+        "400":
+          description: No active kill-switch
+
+  /api/v1/killswitch/incidents:
+    get:
+      tags:
+        - Kill-Switch
+      summary: List incidents
+      description: Retrieve a paginated list of kill-switch incidents.
+      operationId: listIncidents
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: persona_id
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: severity
+          in: query
+          schema:
+            $ref: "#/components/schemas/KillSwitchSeverity"
+      responses:
+        "200":
+          description: List of incidents
+
+  # ==================== Memory ====================
+  /api/v1/memory/vector/store:
+    post:
+      tags:
+        - Memory
+      summary: Store vector
+      description: Store a vector embedding with associated content and metadata.
+      operationId: storeVector
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VectorStoreRequest"
+      responses:
+        "201":
+          description: Vector stored successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    $ref: "#/components/schemas/UUID"
+                  persona_id:
+                    $ref: "#/components/schemas/UUID"
+                  stored:
+                    type: boolean
+                  dimension:
+                    type: integer
+                  created_at:
+                    $ref: "#/components/schemas/Timestamp"
+
+  /api/v1/memory/vector/search:
+    post:
+      tags:
+        - Memory
+      summary: Search vectors
+      description: Search for similar vectors using semantic similarity.
+      operationId: searchVectors
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VectorSearchRequest"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VectorSearchResult"
+                  total:
+                    type: integer
+                  query_time_ms:
+                    type: number
+
+  /api/v1/memory/graph/node:
+    post:
+      tags:
+        - Memory
+      summary: Create graph node
+      description: Create a new node in the knowledge graph.
+      operationId: createGraphNode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - persona_id
+                - node_type
+                - name
+              properties:
+                persona_id:
+                  $ref: "#/components/schemas/UUID"
+                node_type:
+                  type: string
+                  enum: [entity, concept, event, persona, interaction, knowledge, skill, context]
+                name:
+                  type: string
+                properties:
+                  type: object
+                content:
+                  type: string
+      responses:
+        "201":
+          description: Node created successfully
+
+  /api/v1/memory/graph/node/{node_id}:
+    get:
+      tags:
+        - Memory
+      summary: Get graph node
+      description: Retrieve a specific node from the knowledge graph.
+      operationId: getGraphNode
+      parameters:
+        - name: node_id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+      responses:
+        "200":
+          description: Node details
+        "404":
+          description: Node not found
+
+  /api/v1/memory/graph/relationship:
+    post:
+      tags:
+        - Memory
+      summary: Create graph relationship
+      description: Create a relationship between two nodes in the knowledge graph.
+      operationId: createGraphRelationship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - persona_id
+                - source_id
+                - target_id
+                - relationship_type
+              properties:
+                persona_id:
+                  $ref: "#/components/schemas/UUID"
+                source_id:
+                  $ref: "#/components/schemas/UUID"
+                target_id:
+                  $ref: "#/components/schemas/UUID"
+                relationship_type:
+                  type: string
+                  enum: [relates_to, derived_from, depends_on, caused_by, follows, precedes, contains, references]
+                weight:
+                  type: number
+                  default: 1.0
+                bidirectional:
+                  type: boolean
+                  default: false
+      responses:
+        "201":
+          description: Relationship created successfully
+        "404":
+          description: Source or target node not found
+
+  /api/v1/memory/graph/query:
+    get:
+      tags:
+        - Memory
+      summary: Query graph
+      description: Execute a query against the knowledge graph.
+      operationId: queryGraph
+      parameters:
+        - name: persona_id
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: query_type
+          in: query
+          schema:
+            type: string
+            enum: [cypher, traverse, pattern, neighbors]
+            default: traverse
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: max_depth
+          in: query
+          schema:
+            type: integer
+            default: 3
+            minimum: 1
+            maximum: 10
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        "200":
+          description: Query results
+
+  # ==================== Ethics ====================
+  /api/v1/ethics/evaluate:
+    post:
+      tags:
+        - Ethics
+      summary: Evaluate content
+      description: Evaluate content for ethics compliance across multiple categories.
+      operationId: evaluateContent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EthicsEvaluateRequest"
+      responses:
+        "200":
+          description: Evaluation completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EthicsEvaluateResponse"
+
+  /api/v1/ethics/audit:
+    post:
+      tags:
+        - Ethics
+      summary: Create audit entry
+      description: Create an audit entry for tracking ethics-related actions.
+      operationId: createAuditEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - persona_id
+                - action
+                - category
+                - outcome
+              properties:
+                persona_id:
+                  $ref: "#/components/schemas/UUID"
+                action:
+                  type: string
+                category:
+                  $ref: "#/components/schemas/EthicsCategory"
+                outcome:
+                  type: string
+                risk_level:
+                  type: string
+                  enum: [info, low, medium, high, critical]
+                  default: low
+      responses:
+        "201":
+          description: Audit entry created
+
+  /api/v1/ethics/audit:
+    get:
+      tags:
+        - Ethics
+      summary: List audits
+      description: Retrieve a paginated list of audit entries.
+      operationId: listAudits
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: persona_id
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: category
+          in: query
+          schema:
+            $ref: "#/components/schemas/EthicsCategory"
+      responses:
+        "200":
+          description: List of audit entries
+
+  /api/v1/ethics/violations:
+    get:
+      tags:
+        - Ethics
+      summary: List violations
+      description: Retrieve a paginated list of ethics violations.
+      operationId: listViolations
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: persona_id
+          in: query
+          schema:
+            $ref: "#/components/schemas/UUID"
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, low, medium, high, critical]
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of violations
+
+  /api/v1/ethics/report:
+    post:
+      tags:
+        - Ethics
+      summary: Generate report
+      description: Generate a comprehensive ethics report.
+      operationId: generateEthicsReport
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                persona_id:
+                  $ref: "#/components/schemas/UUID"
+                start_date:
+                  $ref: "#/components/schemas/Timestamp"
+                end_date:
+                  $ref: "#/components/schemas/Timestamp"
+                include_violations:
+                  type: boolean
+                  default: true
+                include_audits:
+                  type: boolean
+                  default: true
+                format:
+                  type: string
+                  enum: [json, pdf, html]
+                  default: json
+      responses:
+        "200":
+          description: Ethics report generated
+
+  # ==================== System ====================
+  /api/v1/health:
+    get:
+      tags:
+        - System
+      summary: System health
+      description: Check the health status of the system and its components.
+      operationId: systemHealth
+      responses:
+        "200":
+          description: System health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemHealthResponse"
+
+  /api/v1/metrics:
+    get:
+      tags:
+        - System
+      summary: Prometheus metrics
+      description: Get system metrics in Prometheus format.
+      operationId: prometheusMetrics
+      responses:
+        "200":
+          description: Prometheus metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/v1/info:
+    get:
+      tags:
+        - System
+      summary: System information
+      description: Get detailed system information.
+      operationId: systemInfo
+      responses:
+        "200":
+          description: System information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  version:
+                    type: string
+                  api_version:
+                    type: string
+                  features:
+                    type: array
+                    items:
+                      type: string
+                  capabilities:
+                    type: array
+                    items:
+                      type: string
+
+  /api/v1/version:
+    get:
+      tags:
+        - System
+      summary: Version information
+      description: Get API version details.
+      operationId: versionInfo
+      responses:
+        "200":
+          description: Version information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                  api_version:
+                    type: string
+                  git_commit:
+                    type: string
+                  git_branch:
+                    type: string
+
+  /api/v1/config:
+    get:
+      tags:
+        - System
+      summary: Configuration
+      description: Get current system configuration (non-sensitive values only).
+      operationId: configuration
+      responses:
+        "200":
+          description: System configuration
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  environment:
+                    type: string
+                  debug:
+                    type: boolean
+                  log_level:
+                    type: string
+                  sections:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        settings:
+                          type: object
