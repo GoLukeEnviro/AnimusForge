@@ -45,7 +45,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/animus_stage", "src/animus_core", "src/animus_api", "src/animus_tools", "src/animus_resilience"]
+packages = ["src/animus_stage", "src/animus_core", "src/animus_api", "src/animus_tools", "src/animus_resilience", "src/animus_memory", "src/animus_conscience"]
 
 [tool.hatch.build.targets.sdist]
 include = ["src/**"]
